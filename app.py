@@ -2,20 +2,31 @@ import streamlit as st
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import os
+import matplotlib.font_manager as fm
 
 # 页面设置
 st.set_page_config(page_title="信用卡还款策略对比", layout="wide")
 
-# 字体设置（修复部署后中文乱码问题）
-plt.rcParams['font.sans-serif'] = [
-    'WenQuanYi Zen Hei', 
-    'Noto Sans CJK SC', 
-    'SimHei', 
-    'Microsoft YaHei', 
-    'PingFang SC', 
-    'Arial Unicode MS'
-]
-plt.rcParams['axes.unicode_minus'] = False
+# ====================== 自动安装中文字体（终极解决乱码） ======================
+@st.cache_resource
+def install_chinese_font():
+    # 下载文泉驿正黑字体（Linux服务器通用）
+    os.system("apt-get update -y && apt-get install -y fonts-wqy-zenhei")
+    
+    # 清除matplotlib字体缓存
+    os.system("rm -rf ~/.cache/matplotlib")
+    
+    # 重新加载字体列表
+    fm._rebuild()
+    
+    # 设置全局字体
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+    plt.rcParams['axes.unicode_minus'] = False
+
+# 执行字体安装
+install_chinese_font()
+# ============================================================================
 
 st.title("💳 信用卡还款策略可视化")
 st.markdown("### 最低还款 · 分期还款 · 全额还款")
