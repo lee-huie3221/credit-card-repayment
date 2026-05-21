@@ -6,8 +6,7 @@ import pandas as pd
 # 页面设置
 st.set_page_config(page_title="信用卡还款策略对比", layout="wide")
 
-# 直接使用Streamlit服务器预装的Noto Sans中文字体（100%存在）
-plt.rcParams['font.sans-serif'] = ['Noto Sans CJK SC', 'WenQuanYi Zen Hei']
+# 只设置英文显示，彻底避免中文乱码
 plt.rcParams['axes.unicode_minus'] = False
 
 st.title("💳 信用卡还款策略可视化")
@@ -72,31 +71,30 @@ def calc_installment(amount, months, rate):
     return total_payment, total_interest
 
 def calc_min_payment(amount, daily_rate):
-    """最低还款：按银行真实规则计算，直到还清为止
-    规则：每月还10%本金+上月利息，利息按日利率万分之五计算，按月复利
+    """最低还款：按作业要求计算12个月的利息
+    规则：前11个月还10%本金+当月利息，第12个月一次性还清剩余本金
     """
     remaining = amount
     total_interest = 0
-    months_passed = 0
     
-    while remaining > 0.01:
+    # 前11个月
+    for month in range(11):
         # 计算当月利息
         monthly_interest = remaining * daily_rate * 30
         total_interest += monthly_interest
         
-        # 计算当月最低还款额（10%剩余本金+利息）
-        min_payment = remaining * 0.1 + monthly_interest
+        # 当月还款：10%剩余本金
+        principal_payment = remaining * 0.1
         
         # 更新剩余本金
-        remaining = remaining - (min_payment - monthly_interest)
-        months_passed += 1
-        
-        # 防止无限循环
-        if months_passed > 100:
-            break
+        remaining = remaining - principal_payment
+    
+    # 第12个月：还清剩余本金+最后一个月利息
+    last_month_interest = remaining * daily_rate * 30
+    total_interest += last_month_interest
     
     total_payment = amount + total_interest
-    return total_payment, total_interest, months_passed
+    return total_payment, total_interest, 12
 
 # 计算结果
 full_total, full_interest = calc_full(amount)
@@ -135,17 +133,17 @@ with col3:
 
 st.markdown("---")
 
-# ========== 柱状图（全中文） ==========
+# ========== 柱状图（英文标签+中文说明） ==========
 st.subheader(f"📊 还款金额对比（消费 {amount:,} 元 · 分 {months} 期）")
 
 fig, ax = plt.subplots(figsize=(10, 5))
-labels = ["全额还款", "分期还款", "最低还款"]
+labels = ["Full Payment", "Installment", "Minimum Payment"]
 values = [full_total, inst_total, min_total]
 colors = ["#2e7d32", "#ed6c02", "#d32f2f"]
 
 bars = ax.bar(labels, values, color=colors, width=0.5, edgecolor='white', linewidth=2)
-ax.set_ylabel("总还款金额（元）", fontsize=12)
-ax.axhline(y=amount, color='#999', linestyle='--', alpha=0.7, label=f'本金 {amount:,} 元')
+ax.set_ylabel("Total Payment (Yuan)", fontsize=12)
+ax.axhline(y=amount, color='#999', linestyle='--', alpha=0.7, label=f'Principal {amount:,} Yuan')
 
 for bar in bars:
     height = bar.get_height()
@@ -158,15 +156,16 @@ ax.legend()
 ax.grid(axis='y', alpha=0.3)
 
 st.pyplot(fig)
+st.caption("📊 柱状图：三种还款方式的总金额对比，红色（最低还款）成本最高")
 st.caption("🟢 绿色：全额还款 | 🟠 橙色：分期还款 | 🔴 红色：最低还款")
 
 st.markdown("---")
 
-# ========== 债务递减曲线（全中文） ==========
+# ========== 债务递减曲线（英文标签+中文说明，自动调整X轴） ==========
 st.subheader("📉 债务递减曲线（展示债务随时间变化）")
 
-# 计算最长需要的月份（只显示前24个月，优化对比效果）
-max_months = months * 2
+# 计算最长需要的月份（取分期期数和最低还款期数的最大值，最多显示到100个月）
+max_months = min(max(months, min_months), 100)
 x_months = list(range(max_months + 1))
 
 # 全额曲线
@@ -197,30 +196,30 @@ for i in range(max_months):
 
 fig2, ax2 = plt.subplots(figsize=(10, 5))
 
-ax2.fill_between(x_months, 0, full_curve, alpha=0.3, label='全额还款', color='#2e7d32')
-ax2.fill_between(x_months, 0, installment_curve, alpha=0.3, label='分期还款', color='#ed6c02')
-ax2.fill_between(x_months, 0, min_curve, alpha=0.3, label='最低还款', color='#d32f2f')
+ax2.fill_between(x_months, 0, full_curve, alpha=0.3, label='Full Payment', color='#2e7d32')
+ax2.fill_between(x_months, 0, installment_curve, alpha=0.3, label='Installment', color='#ed6c02')
+ax2.fill_between(x_months, 0, min_curve, alpha=0.3, label='Minimum Payment', color='#d32f2f')
 
-ax2.plot(x_months, full_curve, 'o-', label='全额还款线', color='#2e7d32', linewidth=1.5)
-ax2.plot(x_months, installment_curve, 's-', label='分期还款线', color='#ed6c02', linewidth=1.5)
-ax2.plot(x_months, min_curve, '^-', label='最低还款线', color='#d32f2f', linewidth=1.5)
+ax2.plot(x_months, full_curve, 'o-', label='Full Payment Line', color='#2e7d32', linewidth=1.5)
+ax2.plot(x_months, installment_curve, 's-', label='Installment Line', color='#ed6c02', linewidth=1.5)
+ax2.plot(x_months, min_curve, '^-', label='Minimum Payment Line', color='#d32f2f', linewidth=1.5)
 
-ax2.set_xlabel("月份", fontsize=12)
-ax2.set_ylabel("剩余债务（元）", fontsize=12)
-ax2.set_title("债务随时间递减趋势", fontsize=14)
+ax2.set_xlabel("Months", fontsize=12)
+ax2.set_ylabel("Remaining Debt (Yuan)", fontsize=12)
+ax2.set_title("Debt Reduction Trend Over Time", fontsize=14)
 ax2.legend(loc='upper right')
 ax2.grid(alpha=0.3)
 
-# 只显示前24个月，优化对比效果
+# 只显示前24个月，重点展示三种方式的对比
 ax2.set_xlim(0, months * 2)
 
 st.pyplot(fig2)
-st.caption("💡 曲线越陡，还款越快；最低还款（红线）下降最慢，利息成本最高")
+st.caption("📉 债务递减曲线：曲线越陡还款越快，绿色（全额还款）最划算，红色（最低还款）下降最慢")
 
 st.markdown("---")
 
 # ========== 五大场景参考表（基于五大银行真实利率） ==========
-st.subheader("📋 五大真实场景参考数据")
+st.subheader("📋 大学生常见消费场景参考（真实利率计算）")
 
 # 基于五大银行官网公示利率计算（日利率0.05%，分期月费率0.75%）
 reference_scenes = pd.DataFrame({
@@ -251,6 +250,7 @@ st.info(f"""
 """)
 
 # ========== 数据来源（可溯源） ==========
+st.info("💡 所有利率数据均来自五大银行官网公示，可点击链接直接查看")
 with st.expander("📄 数据来源（五大银行官网）"):
     st.markdown("""
     | 银行 | 最低还款日利率 | 分期月费率（12期） | 官方来源链接 |
