@@ -8,8 +8,12 @@ st.set_page_config(page_title="信用卡还款策略对比", layout="wide")
 
 # 字体设置（修复部署后中文乱码问题）
 plt.rcParams['font.sans-serif'] = [
-    'SimHei', 'Microsoft YaHei', 'PingFang SC', 
-    'Arial Unicode MS', 'WenQuanYi Micro Hei', 'Noto Sans CJK SC'
+    'WenQuanYi Zen Hei', 
+    'Noto Sans CJK SC', 
+    'SimHei', 
+    'Microsoft YaHei', 
+    'PingFang SC', 
+    'Arial Unicode MS'
 ]
 plt.rcParams['axes.unicode_minus'] = False
 
