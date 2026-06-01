@@ -62,19 +62,19 @@ def calc_installment(amount, months, rate):
     return amount + total_interest, total_interest
 
 def calc_min_payment(amount, daily_rate):
-    """严格按照作业要求：前11个月还10%，第12个月一次性还清"""
+    """最低还款：日利率0.05%，按月复利，每月还10%，剩余滚入下月，12个月"""
     remaining = amount
-    total_interest = 0
-    
-    for month in range(11):
+    total_interest = 0.0
+    months = 12
+    min_pay_ratio = 0.1
+
+    for _ in range(months):
         monthly_interest = remaining * daily_rate * 30
         total_interest += monthly_interest
-        remaining = remaining - remaining * 0.1
-    
-    last_month_interest = remaining * daily_rate * 30
-    total_interest += last_month_interest
-    
-    return amount + total_interest, total_interest, 12
+        remaining = remaining * (1 - min_pay_ratio) + monthly_interest
+
+    min_total = amount + total_interest
+    return round(min_total, 2), round(total_interest, 2), 12
 
 # 计算结果
 full_total, full_interest = calc_full(amount)
@@ -154,10 +154,11 @@ installment_curve = [max(0, amount - monthly_payment * i) for i in x_months]
 
 remaining = amount
 min_curve = [remaining]
-for i in range(11):
-    remaining = remaining - remaining * 0.1
+daily_rate = 0.0005
+for i in range(12):
+    interest = remaining * daily_rate * 30
+    remaining = remaining * 0.9 + interest
     min_curve.append(remaining)
-min_curve.append(0)
 
 # 绘制图表
 fig2, ax2 = plt.subplots(figsize=(10, 5))
@@ -228,3 +229,9 @@ with st.expander("📄 查看详细数据来源"):
 
 st.markdown("---")
 st.caption("© 2026 信用卡还款策略对比工具 | 数据来源于各大银行官方网站")
+st.warning("""
+⚠️  重要提醒：
+1.  最低还款方式会产生高额循环利息，仅建议短期应急使用
+2.  过度依赖分期可能导致债务雪球效应，超出还款能力
+3.  大学生应理性消费，避免非必要的信用卡负债
+""")
